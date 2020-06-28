@@ -10,6 +10,7 @@
 
   <!-- Bootstrap -->
   <link href="css/bootstrap.min.css" rel="stylesheet">
+  <link href="css/styles.css" rel="stylesheet">
 
   <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
   <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
@@ -33,31 +34,23 @@
             <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
               <ul class="nav navbar-nav">
                 <li class="active"><a href="/">Elections <span class="sr-only">(current)</span></a></li>
-                <li><a href="/">Voted</a></li>
-                <!-- <li class="dropdown">
-                  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true"
-                    aria-expanded="false">Dropdown <span class="caret"></span></a>
-                  <ul class="dropdown-menu">
-                    <li><a href="#">Action</a></li>
-                  </ul>
-                </li> -->
               </ul>
             </div>
           </div>
         </nav>
 
-        <div id="control" class="text-center" style="display: none;">
+        <div id="controlList" class="text-center">
           <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#addElectionModal">Add
             Elections</button>
           <hr />
         </div>
 
-        <div id="loader">
+        <div id="loaderList">
               <p class="text-center">Loading...</p>
               <p class="text-center">Connect to Metatask to vote your cadidates</p>
         </div>
 
-        <div id="content" class="text-center" style="display: none;">
+        <div id="contentList">
           <!-- <p id="accountAddress" class="text-center"></p> -->
           <div class="row">
             <div class="col-sm-6 col-md-4">
@@ -116,12 +109,12 @@
           <h4 class="modal-title" id="myModalLabel">Add Election</h4>
         </div>
         <div class="modal-body">
-          <div class="input-group">
-            <input id="electionName" type="text" class="form-control" placeholder="Type Election name...">
-            <span class="input-group-btn">
-              <button class="btn btn-default" type="button" onclick="App.addElection()">Go!</button>
-            </span>
-          </div><!-- /input-group -->
+            <input id="electionName" type="text" class="form-control mb-3" style="margin-bottom: 15px;" placeholder="Type Election name...">
+            <textarea id="electionDescription" type="text" class="form-control" style="margin-bottom: 15px;" placeholder="Type Election description..."></textarea>
+            <p id="addElectionModalValidate" class="alert alert-danger" style="display:none">Invalid input</p>
+            <p class="text-right">
+              <button class="btn btn-default" type="button" onclick="App.addElectionContract()" style="margin-bottom: 15px;">Go!</button>
+            </p>
         </div>
         <!-- <div class="modal-footer">
           <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>

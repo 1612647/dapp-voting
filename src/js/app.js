@@ -7,25 +7,10 @@ App = {
   hasVoted: false,
   account: "0x0",
   state: undefined,
+  eletionAbi: undefined,
+  currContractAddress: undefined,
 
   init: async function () {
-    // Load pets.
-    // $.getJSON('../pets.json', function(data) {
-    //   var petsRow = $('#petsRow');
-    //   var petTemplate = $('#petTemplate');
-
-    //   for (i = 0; i < data.length; i ++) {
-    //     petTemplate.find('.panel-title').text(data[i].name);
-    //     petTemplate.find('img').attr('src', data[i].picture);
-    //     petTemplate.find('.pet-breed').text(data[i].breed);
-    //     petTemplate.find('.pet-age').text(data[i].age);
-    //     petTemplate.find('.pet-location').text(data[i].location);
-    //     petTemplate.find('.btn-adopt').attr('data-id', data[i].id);
-
-    //     petsRow.append(petTemplate.html());
-    //   }
-    // });
-
     return await App.initWeb3();
   },
 
@@ -46,58 +31,21 @@ App = {
   },
 
   initContract: function () {
-    $.getJSON("Election.json", function (election) {
-      console.log('election', election)
+    $.getJSON("ElectionFactory.json", function (factory) {
       // Instantiate a new truffle contract from the artifact
-      App.contracts.Election = TruffleContract(election);
+      App.contracts.Factory = TruffleContract(factory);
       // Connect provider to interact with contract
-      App.contracts.Election.setProvider(App.web3Provider);
+      App.contracts.Factory.setProvider(App.web3Provider);
 
-      App.eventListenes();
+      $.getJSON("Election.json", function (election) {
+        App.eletionAbi = election.abi;
+      });
+
       return App.bindEvents();
     });
   },
 
-  // Listen for events from the contract
-  eventListenes: function () {
-    App.contracts.Election.deployed().then(function (instance) {
-      // instance.candidateAdded({}, {
-      //   fromBlock: 'latest',
-      // }).watch(function (error, event) {
-      //   console.log("triggered1");
-      //   // Reload when a new vote is recorded
-      //   // return App.bindCandidateListEvents();
-      // });
-
-      // instance
-      //   .voterRegistered({}, {
-      //     fromBlock: 'latest',
-      //   })
-      //   .watch(function (error, event) {
-      //     console.log("triggered2", )
-      //     // Reload when a new voter is recorded
-      //     return App.bindJoinVoteEvents();
-      //   });
-        
-      instance
-        .voteDone({}, {
-          from: App.account,
-        }
-        )
-        .watch(function (error, event) {
-          console.log("triggered3", )
-          // Reload when a new voter is recorded
-          return App.bindVoteDoneEvents();
-        });
-
-    });
-  },
-
   bindEvents: function () {
-    $("#loader").show();
-    $("#control").hide();
-    $("#content").hide();
-
     // Load account data
     web3.eth.getCoinbase(function (err, account) {
       if (err === null) {
@@ -105,97 +53,255 @@ App = {
         $("#accountAddress").html("Your Account: " + account);
       }
     });
-    //Load election state
-    App.contracts.Election.deployed()
+
+    const queryString = location.search;
+    const urlParams = new URLSearchParams(queryString);
+    const address = urlParams.get("address");
+    if (address) {
+      App.currContractAddress = address;
+      return App.bindElectionEvents(address);
+      // return App.eventListenes(address);
+    }
+    return App.bindElectionFactoryEvents();
+  },
+
+  // Listen for events from the contract
+  eventListenes: function (address) {
+    App.contracts.Factory.deployed().then(function (instance) {
+      const electionInstance = App.getContractInstance(address);
+      electionInstance
+        .voteDone(
+          {},
+          {
+            fromBlock: 0,
+            toBlock: 'latest'
+          }
+        )
+        .watch(function (error, event) {
+          console.log("error :>> ", error);
+          console.log("event :>> ", event);
+          console.log("triggered1");
+          if (event) {
+            App.bindVoteDoneEvents(address);
+          }
+        });
+      
+      electionInstance
+        .candidateAdded(
+          {},
+          {
+            from: App.account
+          }
+        )
+        .watch(function (error, event) {
+          console.log("error :>> ", error);
+          console.log("event :>> ", event);
+          console.log("triggered2");
+          if (event) {
+            App.bindCandidateListEvents(address);
+          }
+        });
+      electionInstance
+        .voterRegistered(
+          {},
+          {
+            fromBlock: 0,
+            toBlock: 'latest'
+          }
+        )
+        .watch(function (error, event) {
+          console.log("error :>> ", error);
+          console.log("event :>> ", event);
+          console.log("triggered3");
+          if (event) {
+            App.bindJoinVoteEvents(address);
+          }
+        });
+    });
+  },
+
+  getContractInstance: function (contractAddress) {
+    const contracts = web3.eth.contract(App.eletionAbi);
+    contractInstance = contracts.at(contractAddress);
+    return contractInstance;
+  },
+
+  bindElectionFactoryEvents: function () {
+    App.bindContractListEvents();
+  },
+
+  bindContractListEvents: function () {
+    let electionsInstance;
+    $("#loader").show();
+    $("#control").hide();
+    $("#content").hide();
+
+    let factoryInstance;
+    App.contracts.Factory.deployed()
       .then(function (instance) {
-        return instance.electionState();
+        factoryInstance = instance;
+        return factoryInstance.contractsCount();
       })
-      .then(function (electionState) {
-        switch (electionState.c[0]) {
-          case createdState:
-            App.state = createdState;
-            $("#statusLabel").text("Not started");
-            $("#addCandidate").attr("disabled", false);
-            $("#startVote").attr("disabled", false);
-            $("#endVote").attr("disabled", true);
-            $("#joinVote").attr("disabled", false);
-            $("#voteBtn").attr("disabled", true);
-            $("#voteBtn").text("Waiting for start");
-            break;
-          case votingState:
-            App.state = votingState;
-            $("#statusLabel").text("Voting");
-            $("#addCandidate").attr("disabled", true);
-            $("#startVote").attr("disabled", true);
-            $("#endVote").attr("disabled", false);
-            $("#joinVote").attr("disabled", true);
-            break;
-          case endedState:
-            $("#statusLabel").text("Vote ended");
-            App.state = endedState;
-            $("#addCandidate").attr("disabled", true);
-            $("#startVote").attr("disabled", true);
-            $("#endVote").attr("disabled", true);
-            $("#joinVote").attr("disabled", true);
-            break;
+      .then(function (contractsCount) {
+        App.contractsCount = contractsCount.c[0];
+
+        const contentList = $("#contentList");
+        contentList.empty();
+
+        if (App.contractsCount == 0) {
+          contentList.empty();
+          contentList.append(
+            `<p class="text-center">Contract list is empty<p>`
+          );
+        } else {
+          factoryInstance
+            .getContractList()
+            .then(function (contractAddressList) {
+              for (let i = 0; i < App.contractsCount; i++) {
+                const electionInstance = App.getContractInstance(
+                  contractAddressList[i]
+                );
+                const address = electionInstance.address;
+                electionInstance.electionOfficialName(function (err1, name) {
+                  if (!err1) {
+                    electionInstance.electionDescription(function (
+                      err2,
+                      description
+                    ) {
+                      if (!err2) {
+                        const electionTemplate = `
+                        <div class="col-sm-6 col-md-4">
+                        <div class="thumbnail">
+                          <div class="caption">
+                            <h3>${name}</h3>
+                            <p>Address: ${address}</p>
+                            <p>Description: ${description}</p>
+                            <p><a href="/vote.html?address=${address}" class="btn btn-primary" role="button">Join</a></p>
+                          </div>
+                        </div>
+                      </div>`;
+                        contentList.append(electionTemplate);
+                      }
+                    });
+                  }
+                });
+              }
+            });
         }
+        $("#loader").hide();
+        $("#control").show();
+        $("#content").show();
+      })
+      .catch(function (error) {
+        console.warn(error);
+      });
+  },
+
+  bindElectionEvents: function (address) {
+    // $("#loader").show();
+    // $("#control").hide();
+    // $("#content").hide();
+
+    // // Load account data
+    web3.eth.getCoinbase(function (err, account) {
+      if (err === null) {
+        App.account = account;
+        $("#accountAddress").html("Your Account: " + account);
+      }
+    });
+
+    //Load election
+    App.contracts.Factory.deployed()
+      .then(function (instance) {
+        const electionInstance = App.getContractInstance(address);
+        electionInstance.electionState(function (err1, status) {
+          if (!err1) {
+            switch (status.c[0]) {
+              case createdState:
+                App.state = createdState;
+                $("#statusLabel").text("Not started");
+                $("#addCandidate").attr("disabled", false);
+                $("#startVote").attr("disabled", false);
+                $("#endVote").attr("disabled", true);
+                $("#joinVote").attr("disabled", false);
+                $("#voteBtn").attr("disabled", true);
+                $("#voteBtn").text("Waiting for start");
+                break;
+              case votingState:
+                App.state = votingState;
+                $("#statusLabel").text("Voting");
+                $("#addCandidate").attr("disabled", true);
+                $("#startVote").attr("disabled", true);
+                $("#endVote").attr("disabled", false);
+                $("#joinVote").attr("disabled", true);
+                break;
+              case endedState:
+                $("#statusLabel").text("Vote ended");
+                App.state = endedState;
+                $("#addCandidate").attr("disabled", true);
+                $("#startVote").attr("disabled", true);
+                $("#endVote").attr("disabled", true);
+                $("#joinVote").attr("disabled", true);
+                break;
+            }
+          }
+        });
       })
       .catch(function (error) {
         console.warn(error);
       });
 
-      App.bindCandidateListEvents()
-      App.bindVoteDoneEvents()
-      App.bindJoinVoteEvents()
-      App.bindWinnerEvents()
-      App.bindControlEvents()
+    App.contracts.Factory.deployed()
+      .then(function (instance) {
+        App.bindCandidateListEvents(address);
+        App.bindVoteDoneEvents(address);
+        App.bindJoinVoteEvents(address);
+        App.bindWinnerEvents(address);
+        App.bindControlEvents(address);
+      })
+      .catch(function (error) {
+        console.warn(error);
+      });
   },
 
-  bindJoinVoteEvents: function () {
+  bindJoinVoteEvents: function (address) {
     $("#loader").show();
     $("#control").hide();
     $("#content").hide();
 
-    App.contracts.Election.deployed()
-      .then(function (instance) {
-        return instance.voterRegister(App.account);
-      })
-      .then(function (voter) {
+    const electionInstance = App.getContractInstance(address);
+    electionInstance.voterRegister(App.account, function (err1, voter) {
+      if (!err1) {
         if (voter[0]) {
           $("#joinVote").attr("disabled", true);
           $("#joinVote").text("Joined");
-        } else if(App.state !== createdState){
+        } else if (App.state !== createdState) {
           $("#joinVote").attr("disabled", true);
           $("#joinVote").text("Can't join");
           $("#voteBtn").attr("disabled", true);
           $("#voteBtn").text("You didn't join this vote");
         }
-      })
-      .catch(function (error) {
-        console.warn(error);
-      });
+      }
+    });
   },
 
-  bindCandidateListEvents: function () {
-    let electionInstance;
+  bindCandidateListEvents: function (address) {
     $("#loader").show();
     $("#control").hide();
     $("#content").hide();
 
-    App.contracts.Election.deployed()
-      .then(function (instance) {
-        electionInstance = instance;
-        return electionInstance.candidatesCount();
-      })
-      .then(function (candidatesCount) {
-        const candidatesTable = $("#candidatesTable");
-        const candidateOptions = $("#candidateOptions");
-        const candidatesResults = $("#candidatesResults");
-        candidatesResults.empty();
+    const candidatesTable = $("#candidatesTable");
+    const candidateOptions = $("#candidateOptions");
+    const candidatesResults = $("#candidatesResults");
+    candidatesResults.empty();
 
-        const candidatesSelect = $("#candidatesSelect");
-        candidatesSelect.empty();
+    const candidatesSelect = $("#candidatesSelect");
+    candidatesSelect.empty();
 
+    const electionInstance = App.getContractInstance(address);
+    electionInstance.candidatesCount(function (err1, res) {
+      if (!err1) {
+        const candidatesCount = res.c[0];
         if (candidatesCount == 0) {
           candidatesTable.empty();
           candidatesTable.append(
@@ -204,7 +310,7 @@ App = {
           candidateOptions.hide();
         } else {
           for (let i = 1; i <= candidatesCount; i++) {
-            electionInstance.candidates(i).then(function (candidate) {
+            electionInstance.candidates(i, function (err1, candidate) {
               const id = candidate[0];
               const name = candidate[1];
               const voteCount = candidate[2];
@@ -227,25 +333,22 @@ App = {
             });
           }
         }
+        console.log("candidatesResults :>> ", candidatesResults.val(0));
         $("#loader").hide();
         $("#control").show();
         $("#content").show();
-      })
-      .catch(function (error) {
-        console.warn(error);
-      });
+      }
+    });
   },
 
-  bindVoteDoneEvents: function () {
+  bindVoteDoneEvents: function (address) {
     $("#loader").show();
     $("#control").hide();
     $("#content").hide();
 
-    App.contracts.Election.deployed()
-      .then(function (instance) {
-        return instance.voterRegister(App.account);
-      })
-      .then(function (voter) {
+    const electionInstance = App.getContractInstance(address);
+    electionInstance.voterRegister(App.account, function (err1, voter) {
+      if (!err1) {
         const voted = voter[2];
         if (voted) {
           $("#candidateOptions").hide();
@@ -255,123 +358,126 @@ App = {
         $("#loader").hide();
         $("#control").show();
         $("#content").show();
-      })
-      .catch(function (error) {
-        console.warn(error);
+      }
+    });
+  },
+
+  bindWinnerEvents: function (address) {
+    const electionInstance = App.getContractInstance(address);
+    electionInstance.finalWinner(function (err1, finalWinner) {
+      if (!err1 && finalWinner) {
+        $("#finalWinner").html(
+          `<h4><strong>${finalWinner}</strong> is winner</h4><hr>`
+        );
+      }
+    });
+  },
+
+  bindControlEvents: function (address) {
+    const electionInstance = App.getContractInstance(address);
+    electionInstance.electionOwnerAddress(function (
+      err1,
+      electionOwnerAddress
+    ) {
+      if (!err1) {
+        if (electionOwnerAddress != App.account) {
+          $("#control").hide();
+        } else $("#control").show();
+      }
+    });
+  },
+
+  addElectionContract: function () {
+    const electionName = $("#electionName").val();
+    const electionDescription = $("#electionDescription").val();
+
+    if (!electionName || !electionDescription) {
+      $("#addElectionModalValidate").show();
+      return;
+    } else {
+      App.contracts.Factory.deployed().then(function (instance) {
+        return instance
+          .addContract(electionName, electionDescription)
+          .then(function (result) {
+            if (result) {
+              $("#addElectionModal").modal("hide");
+              location.reload()
+            }
+          });
       });
-  },
-
-  bindWinnerEvents: function () {
-    App.contracts.Election.deployed()
-      .then(function (instance) {
-        return instance.finalWinner();
-      })
-      .then(function (finalWinner) {
-          $("#finalWinner").html(`<h4><strong>${finalWinner}</strong> is winner</h4><hr>`);
-      })
-      .catch(function (error) {
-        console.warn(error);
-      });
-  },
-
-  bindControlEvents: function () {
-    App.contracts.Election.deployed()
-      .then(function (instance) {
-        return instance.electionOwnerAddress();
-      })
-      .then(function (electionOwnerAddress) {
-        if(electionOwnerAddress != App.account) {
-          $('#control').hide();
-        } else $('#control').show();
-      })
-      .catch(function (error) {
-        console.warn(error);
-      });    
-  },
-
-  markAdopted: function (adopters, account) {
-    /*
-     * Replace me...
-     */
+    }
   },
 
   registerVoter: function () {
-    var voterName = $("#voterName").val();
-    App.contracts.Election.deployed()
-      .then(function (instance) {
-        return instance.joinVote(App.account, voterName);
-      })
-      .then(function (result) {
-        // Wait for votes to update
-        location.reload();
-      })
-      .catch(function (err) {
-        console.error(err);
+    const address = App.currContractAddress;
+    const voterName = $("#voterName").val();
+    App.contracts.Factory.deployed().then(function (instance) {
+      const electionInstance = App.getContractInstance(address);
+      electionInstance.joinVote(App.account, voterName, function (
+        err1,
+        result
+      ) {
+        if (!err1) {
+          location.reload()
+        }
       });
+    });
   },
 
   startVote: function () {
-    App.contracts.Election.deployed()
-      .then(function (instance) {
-        return instance.startVote();
-      })
-      .then(function (result) {
-        // Wait for votes to update
-        location.reload();
-      })
-      .catch(function (err) {
-        console.error(err);
+    const address = App.currContractAddress;
+    App.contracts.Factory.deployed().then(function (instance) {
+      const electionInstance = App.getContractInstance(address);
+      electionInstance.startVote(function (err1, result) {
+        if (!err1) {
+          location.reload()
+        }
       });
+    });
   },
 
   endVote: function () {
-    App.contracts.Election.deployed()
-      .then(function (instance) {
-        return instance.endVote();
-      })
-      .then(function (result) {
-        // Wait for votes to update
-        location.reload();
-      })
-      .catch(function (err) {
-        console.error(err);
+    const address = App.currContractAddress;
+    App.contracts.Factory.deployed().then(function (instance) {
+      const electionInstance = App.getContractInstance(address);
+      electionInstance.endVote(function (err1, result) {
+        if (!err1) {
+          location.reload()
+        }
       });
+    });
   },
 
   handleVote: function (event) {
     event.preventDefault();
 
-    var candidateId = $("#candidatesSelect").val();
-    App.contracts.Election.deployed()
-      .then(function (instance) {
-        return instance.doVote(candidateId, { from: App.account });
-      })
-      .then(function (result) {
-        // Wait for votes to update
-        console.log("result", result);
-        location.reload();
-      })
-      .catch(function (err) {
-        console.error(err);
+    const address = App.currContractAddress;
+    const candidateId = $("#candidatesSelect").val();
+    App.contracts.Factory.deployed().then(function (instance) {
+      const electionInstance = App.getContractInstance(address);
+      electionInstance.doVote(candidateId, { from: App.account }, function (
+        err1,
+        result
+      ) {
+        if (!err1) {
+          location.reload()
+        }
       });
+    });
   },
 
-  addElection: function () {},
-
   addCandidate: function () {
-    var candidateName = $("#candidateName").val();
-    App.contracts.Election.deployed()
-      .then(function (instance) {
-        return instance.addCandidate(candidateName);
-      })
-      .then(function (result) {
-        $("#addCandidateModal").modal("hide");
-        location.reload();
-        // Wait for votes to update
-      })
-      .catch(function (err) {
-        console.error(err);
+    const address = App.currContractAddress;
+    const candidateName = $("#candidateName").val();
+    App.contracts.Factory.deployed().then(function (instance) {
+      const electionInstance = App.getContractInstance(address);
+      electionInstance.addCandidate(candidateName, function (err1, result) {
+        if (!err1) {
+          $("#addCandidateModal").modal("hide");
+          location.reload()
+        }
       });
+    });
   },
 };
 
@@ -379,8 +485,8 @@ $(function () {
   $(window).load(function () {
     App.init();
   });
-  window.ethereum.on('accountsChanged', function (accounts) {
+  window.ethereum.on("accountsChanged", function (accounts) {
     location.reload();
     // Time to reload your interface with accounts[0]!
-  })
+  });
 });

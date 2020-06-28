@@ -10,7 +10,7 @@ contract ElectionFactory {
         public
     {
         contractsCount++;
-        Election newContract = new Election(name, description);
+        Election newContract = new Election(msg.sender, name, description);
         contractList.push(newContract);
     }
 
@@ -48,14 +48,14 @@ contract Election {
     string public electionOfficialName;
     string public electionDescription;
     State public electionState;
-    string public finalWinner = "qq";
+    string public finalWinner;
     uint256 highest = 0;
 
     //constructor
-    constructor(string memory name, string memory description) public {
+    constructor(address ownerAddress, string memory name, string memory description) public {
         // addCandidate("Trump");
         //addCandidate("Bidden");
-        electionOwnerAddress = msg.sender;
+        electionOwnerAddress = ownerAddress;
         electionOfficialName = name;
         electionDescription = description;
         electionState = State.Created;
@@ -74,6 +74,9 @@ contract Election {
             bytes(voterRegister[msg.sender].voterName).length != 0 &&
             !voterRegister[msg.sender].voted, "Only Register has access");
         _;
+    }
+    function getElectionState() public view returns (State){
+        return electionState;
     }
 
     // event
