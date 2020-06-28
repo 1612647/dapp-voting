@@ -132,9 +132,10 @@ App = {
 
   bindContractListEvents: function () {
     let electionsInstance;
-    $("#loader").show();
-    $("#control").hide();
-    $("#content").hide();
+    $("#loaderList").show();
+    $("#controlList").hide();
+    $("#contentList").hide();
+    $("#connectedList").hide();
 
     let factoryInstance;
     App.contracts.Factory.deployed()
@@ -145,7 +146,7 @@ App = {
       .then(function (contractsCount) {
         App.contractsCount = contractsCount.c[0];
 
-        const contentList = $("#contentList");
+        const contentList = $("#contentList .row");
         contentList.empty();
 
         if (App.contractsCount == 0) {
@@ -188,9 +189,10 @@ App = {
               }
             });
         }
-        $("#loader").hide();
-        $("#control").show();
-        $("#content").show();
+        $("#loaderList").hide();
+        $("#controlList").show();
+        $("#contentList").show();
+        $("#connectedList").show();
       })
       .catch(function (error) {
         console.warn(error);
@@ -198,9 +200,11 @@ App = {
   },
 
   bindElectionEvents: function (address) {
-    // $("#loader").show();
-    // $("#control").hide();
-    // $("#content").hide();
+    $("#loader").show();
+    $("#control #addCandidate").hide();
+    $("#control #startVote").hide();
+    $("#control #endVote").hide();
+    $("#content").hide();
 
     // // Load account data
     web3.eth.getCoinbase(function (err, account) {
@@ -266,7 +270,9 @@ App = {
 
   bindJoinVoteEvents: function (address) {
     $("#loader").show();
-    $("#control").hide();
+    $("#control #addCandidate").hide();
+    $("#control #startVote").hide();
+    $("#control #endVote").hide();
     $("#content").hide();
 
     const electionInstance = App.getContractInstance(address);
@@ -287,7 +293,9 @@ App = {
 
   bindCandidateListEvents: function (address) {
     $("#loader").show();
-    $("#control").hide();
+    $("#control #addCandidate").hide();
+    $("#control #startVote").hide();
+    $("#control #endVote").hide();
     $("#content").hide();
 
     const candidatesTable = $("#candidatesTable");
@@ -343,7 +351,9 @@ App = {
 
   bindVoteDoneEvents: function (address) {
     $("#loader").show();
-    $("#control").hide();
+    $("#control #addCandidate").hide();
+    $("#control #startVote").hide();
+    $("#control #endVote").hide();
     $("#content").hide();
 
     const electionInstance = App.getContractInstance(address);
@@ -356,7 +366,9 @@ App = {
           $("#voteBtn").text("Voted");
         }
         $("#loader").hide();
-        $("#control").show();
+        $("#control #addCandidate").show();
+        $("#control #startVote").show();
+        $("#control #endVote").show();
         $("#content").show();
       }
     });
@@ -381,8 +393,14 @@ App = {
     ) {
       if (!err1) {
         if (electionOwnerAddress != App.account) {
-          $("#control").hide();
-        } else $("#control").show();
+          $("#control #addCandidate").hide();
+          $("#control #startVote").hide();
+          $("#control #endVote").hide();
+        } else {
+          $("#control #addCandidate").show();
+          $("#control #startVote").show();
+          $("#control #endVote").show();
+        }
       }
     });
   },
@@ -401,7 +419,9 @@ App = {
           .then(function (result) {
             if (result) {
               $("#addElectionModal").modal("hide");
-              location.reload()
+              setInterval(() => {
+                location.reload()                
+              }, 1000);
             }
           });
       });
@@ -418,7 +438,9 @@ App = {
         result
       ) {
         if (!err1) {
-          location.reload()
+          setInterval(() => {
+            location.reload()                
+          }, 1000);
         }
       });
     });
@@ -430,7 +452,9 @@ App = {
       const electionInstance = App.getContractInstance(address);
       electionInstance.startVote(function (err1, result) {
         if (!err1) {
-          location.reload()
+          setInterval(() => {
+            location.reload()                
+          }, 1000);
         }
       });
     });
@@ -442,7 +466,9 @@ App = {
       const electionInstance = App.getContractInstance(address);
       electionInstance.endVote(function (err1, result) {
         if (!err1) {
-          location.reload()
+          setInterval(() => {
+            location.reload()                
+          }, 1000);
         }
       });
     });
@@ -460,7 +486,9 @@ App = {
         result
       ) {
         if (!err1) {
-          location.reload()
+          setInterval(() => {
+            location.reload()                
+          }, 1000);
         }
       });
     });
@@ -474,7 +502,9 @@ App = {
       electionInstance.addCandidate(candidateName, function (err1, result) {
         if (!err1) {
           $("#addCandidateModal").modal("hide");
-          location.reload()
+          setInterval(() => {
+            location.reload()                
+          }, 1000);
         }
       });
     });

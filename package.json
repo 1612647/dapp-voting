@@ -13,6 +13,8 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "ganache-cli": "^6.10.0-beta.2",
     "lite-server": "^2.3.0"
-  }
+  },
+  "dependencies": {}
 }
