@@ -19,10 +19,15 @@ App = {
       // If a web3 instance is already provided by Meta Mask.
       App.web3Provider = web3.currentProvider;
       web3 = new Web3(web3.currentProvider);
+      web3.defaultAccount = await ethereum.enable();
+      if (!web3.defaultAccount) {
+        console.log("User not found");
+      } else {
+        console.log("User access");
+      }
     } else {
-      // Specify default instance if no web3 instance provided
       App.web3Provider = new Web3.providers.HttpProvider(
-        "http://localhost:7545"
+        "http://localhost:8545"
       );
       web3 = new Web3(App.web3Provider);
     }
@@ -74,7 +79,7 @@ App = {
           {},
           {
             fromBlock: 0,
-            toBlock: 'latest'
+            toBlock: "latest",
           }
         )
         .watch(function (error, event) {
@@ -85,12 +90,12 @@ App = {
             App.bindVoteDoneEvents(address);
           }
         });
-      
+
       electionInstance
         .candidateAdded(
           {},
           {
-            from: App.account
+            from: App.account,
           }
         )
         .watch(function (error, event) {
@@ -106,7 +111,7 @@ App = {
           {},
           {
             fromBlock: 0,
-            toBlock: 'latest'
+            toBlock: "latest",
           }
         )
         .watch(function (error, event) {
@@ -420,7 +425,7 @@ App = {
             if (result) {
               $("#addElectionModal").modal("hide");
               setInterval(() => {
-                location.reload()                
+                location.reload();
               }, 1000);
             }
           });
@@ -439,7 +444,7 @@ App = {
       ) {
         if (!err1) {
           setInterval(() => {
-            location.reload()                
+            location.reload();
           }, 1000);
         }
       });
@@ -453,7 +458,7 @@ App = {
       electionInstance.startVote(function (err1, result) {
         if (!err1) {
           setInterval(() => {
-            location.reload()                
+            location.reload();
           }, 1000);
         }
       });
@@ -467,7 +472,7 @@ App = {
       electionInstance.endVote(function (err1, result) {
         if (!err1) {
           setInterval(() => {
-            location.reload()                
+            location.reload();
           }, 1000);
         }
       });
@@ -487,7 +492,7 @@ App = {
       ) {
         if (!err1) {
           setInterval(() => {
-            location.reload()                
+            location.reload();
           }, 1000);
         }
       });
@@ -503,7 +508,7 @@ App = {
         if (!err1) {
           $("#addCandidateModal").modal("hide");
           setInterval(() => {
-            location.reload()                
+            location.reload();
           }, 1000);
         }
       });
